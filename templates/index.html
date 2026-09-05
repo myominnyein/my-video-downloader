@@ -7,6 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Adsterra Popunder Ad Script -->
+    <script src="https://pl31198922.profitableratecpmnetwork.com/5e/37/64/5e3764f05f97a29b7f900193c348afa0.js"></script>
+
+    <!-- Adsterra SocialBar Ad Script -->
+    <script src="https://pl31198923.profitableratecpmnetwork.com/7b/bf/89/7bbf897e85a91153a6a577f0c5a9db10.js"></script>
+
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -33,7 +40,7 @@
 
     <div class="w-full max-w-xl">
         <!-- Header -->
-        <div class="text-center mb-8">
+        <div class="text-center mb-6">
             <h1 class="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
                 NexStream Downloader
             </h1>
@@ -70,7 +77,7 @@
         </div>
 
         <!-- Video Card & Quality Select -->
-        <div id="card" class="hidden glass p-5 rounded-2xl border border-white/10 shadow-2xl transition-all">
+        <div id="card" class="hidden glass p-5 rounded-2xl border border-white/10 shadow-2xl transition-all mb-6">
             <div class="flex flex-col sm:flex-row gap-4">
                 <div class="relative w-full sm:w-44 h-28 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0">
                     <img id="thumb" class="w-full h-full object-cover" src="">
@@ -98,6 +105,20 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Adsterra 300x250 Banner Ad Placement -->
+        <div class="flex justify-center items-center my-4 overflow-hidden rounded-xl">
+            <script type="text/javascript">
+                atOptions = {
+                    'key' : '2069eeaf2efd61f8c2494a98f3695e6c',
+                    'format' : 'iframe',
+                    'height' : 250,
+                    'width' : 300,
+                    'params' : {}
+                };
+            </script>
+            <script type="text/javascript" src="//www.topcreativeformat.com/2069eeaf2efd61f8c2494a98f3695e6c/invoke.js"></script>
         </div>
     </div>
 
@@ -133,7 +154,6 @@
                 document.getElementById('thumb').src = data.thumbnail;
                 document.getElementById('duration').innerText = data.duration;
 
-                // Build Quality Options
                 const select = document.getElementById('qualitySelect');
                 select.innerHTML = '';
                 data.qualities.forEach(q => {
