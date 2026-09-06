@@ -1,100 +1,62 @@
 import os
-import re
-import glob
-import requests
-from flask import Flask, render_template, request, jsonify, send_file
+import uuid
+from flask import Flask, render_template, request, send_file, after_this_request
 import yt_dlp
 
 app = Flask(__name__)
 
-DOWNLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
-if not os.path.exists(DOWNLOAD_DIR):
-    os.makedirs(DOWNLOAD_DIR)
+# Downloaded files ယာယီသိမ်းဆည်းမည့် folder
+DOWNLOAD_DIR = os.path.join(os.path.dirname(__file__), "downloads")
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-def get_yt_dlp_options(url):
-    cookie_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
-    
-    opts = {
-        'format': 'best',
-        'outtmpl': os.path.join(DOWNLOAD_DIR, '%(id)s.%(ext)s'),
-        'quiet': True,
-        'no_warnings': True,
-        'nocheckcertificate': True,
-        'geo_bypass': True,
-    }
-
-    # YouTube ဖြစ်ပါက Bot Bypass Settings သီးသန့်ထည့်သွင်းခြင်း
-    if 'youtube.com' in url or 'youtu.be' in url:
-        opts.update({
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'ios', 'web']
-                }
-            },
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept-Language': 'en-US,en;q=0.9',
-            }
-        })
-        if os.path.exists(cookie_path):
-            opts['cookiefile'] = cookie_path
-
-    return opts
-
-@app.route('/')
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template('index.html')
+    if request.method == "POST":
+        video_url = request.form.get("url")
+        if not video_url:
+            return render_template("index.html", error="URL ထည့်သွင်းပေးပါ။")
 
-@app.route('/get-info', methods=['POST'])
-@app.route('/download', methods=['POST'])
-@app.route('/fetch', methods=['POST'])
-def process_video():
-    data = request.get_json(silent=True) or request.form
-    video_url = data.get('url', '').strip()
+        try:
+            # File name collision မဖြစ်စေရန် unique ID သုံးခြင်း
+            file_id = str(uuid.uuid4())
+            out_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
 
-    if not video_url:
-        return jsonify({'success': False, 'error': 'URL ထည့်သွင်းပေးပါ'}), 400
+            ydl_opts = {
+                "format": "best[ext=mp4]/best", # MP4 format အကြည်ဆုံးကို ဦးစားပေးယူမည်
+                "outtmpl": out_template,
+                "quiet": True,
+                "no_warnings": True,
+            }
 
-    ydl_opts = get_yt_dlp_options(video_url)
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(video_url, download=True)
+                downloaded_file = ydl.prepare_filename(info)
+                title = info.get("title", "video")
+                ext = info.get("ext", "mp4")
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=True)
-            filename = ydl.prepare_filename(info)
+            # Download ပြီးပါက server ပေါ်မှ file ကို ပြန်ဖျက်ရန်
+            @after_this_request
+            def cleanup(response):
+                try:
+                    if os.path.exists(downloaded_file):
+                        os.remove(downloaded_file)
+                except Exception as e:
+                    app.logger.error(f"Error removing file: {e}")
+                return response
 
-            if not os.path.exists(filename):
-                base_name = os.path.splitext(filename)[0]
-                matching_files = glob.glob(f"{glob.escape(base_name)}.*")
-                if matching_files:
-                    filename = matching_files[0]
+            # Clean download file name သတ်မှတ်ပေးခြင်း
+            safe_filename = f"{title}.{ext}".encode('ascii', 'ignore').decode('ascii') or f"video.{ext}"
 
-            actual_filename = os.path.basename(filename)
+            return send_file(
+                downloaded_file,
+                as_attachment=True,
+                download_name=safe_filename
+            )
 
-            return jsonify({
-                'success': True,
-                'title': info.get('title', 'Video'),
-                'thumbnail': info.get('thumbnail', ''),
-                'duration': info.get('duration', 0),
-                'download_url': f'/get-file/{actual_filename}',
-                'url': f'/get-file/{actual_filename}',
-                'formats': [
-                    {
-                        'quality': 'HD Video (MP4)',
-                        'url': f'/get-file/{actual_filename}',
-                        'ext': 'mp4'
-                    }
-                ]
-            })
+        except Exception as e:
+            return render_template("index.html", error=f"Download ပြုလုပ်၍ မရပါ: {str(e)}")
 
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return render_template("index.html")
 
-@app.route('/get-file/<filename>')
-def get_file(filename):
-    file_path = os.path.join(DOWNLOAD_DIR, filename)
-    if os.path.exists(file_path):
-        return send_file(file_path, as_attachment=True)
-    return jsonify({'error': 'File not found'}), 404
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
