@@ -7,31 +7,41 @@ import yt_dlp
 
 app = Flask(__name__)
 
-# Download သိမ်းဆည်းမည့် folder လမ်းကြောင်း
+# Video သိမ်းဆည်းမည့် Downloads Folder
 DOWNLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
 
 if not os.path.exists(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
 
 def get_yt_dlp_options():
-    """YouTube bot blocks နှင့် error များကို ကျော်လွှားရန် options များ"""
-    return {
+    """Render/Cloud IP ပေါ်တွင် YouTube bot block ကျော်လွှားရန် options များ"""
+    cookie_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
+    
+    opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'outtmpl': os.path.join(DOWNLOAD_DIR, '%(id)s_%(title).50s.%(ext)s'),
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        # YouTube Bot Detection ကျော်ရန် android client အသုံးပြုခြင်း
+        'geo_bypass': True,
+        # Server IP block ကို ကျော်လွှားရန် iOS / TV embedded client သုံးခြင်း
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web']
+                'player_client': ['ios', 'tv_embedded', 'mweb'],
+                'player_skip': ['webpage', 'configs', 'js']
             }
         },
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'User-Agent': 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1 like Mac OS X; en_US)',
             'Accept-Language': 'en-US,en;q=0.9',
         }
     }
+    
+    # cookies.txt ရှိပါက auto အသုံးပြုရန်
+    if os.path.exists(cookie_path):
+        opts['cookiefile'] = cookie_path
+        
+    return opts
 
 @app.route('/')
 def index():
@@ -49,11 +59,11 @@ def download_video():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Video အချက်အလက်နှင့် download ဆွဲခြင်း
+            # Video အချက်အလက်ယူခြင်းနှင့် download ဆွဲခြင်း
             info = ydl.extract_info(video_url, download=True)
             filename = ydl.prepare_filename(info)
 
-            # အကယ်၍ file extension ပြောင်းလဲသွားပါက ရှာဖွေခြင်း
+            # Extension ပြောင်းလဲမှုရှိပါက ဖိုင်ပြန်ရှာခြင်း
             if not os.path.exists(filename):
                 base_name = os.path.splitext(filename)[0]
                 matching_files = glob.glob(f"{glob.escape(base_name)}.*")
